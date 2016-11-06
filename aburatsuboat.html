@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+  <!-- IE9以降で正しく機能するようにする -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+  <title>aburatsuboat</title>
+
+  <!-- d3.js v4をインクルード -->
+  <script src="./static/d3.4.3.0/d3.js"></script>
+
+  <!-- topojsonをインクルード -->
+  <script src="./static/topojson.1.6.27/topojson.min.js"></script>
+
+  <!-- スタイルシート -->
+  <link rel="stylesheet" href="./static/site/css/aburatsuboat.css" type="text/css">
+
+  <!-- aburatsuboatをインクルード -->
+  <script src="./static/site/js/aburatsuboat.startup.js"></script>
+  <script src="./static/site/js/aburatsuboat.geodata.miura.js"></script>
+  <script src="./static/site/js/aburatsuboat.geodata.landmark.js"></script>
+  <script src="./static/site/js/aburatsuboat.geodata.boat.js"></script>
+  <script src="./static/site/js/aburatsuboat.tidedata.js"></script>
+  <script src="./static/site/js/aburatsuboat.mapChart.js"></script>
+</head>
+
+<body>
+
+  <div>
+    <h1>aburatsuboat</h1>
+
+    <p>
+      三浦半島の油壺の海を手こぎボートで浮かんだときの航路を描画します。
+    </p>
+
+    <div class="aburatsubo-container">
+      <div id="aburatsuboat"></div>
+    </div>
+
+  </div>
+
+  <script>
+    aburatsuboat.mapChart.example();
+  </script>
+
+</body>
+
+</html>

@@ -1,0 +1,183 @@
+@charset "UTF-8";
+
+/* リセット開始(ブラウザのデフォルトをあてにしない) */
+* {
+  margin             : 0;
+  padding            : 0;
+  -webkit-box-sizing : border-box;
+  -moz-box-sizing    : border-box;
+  -o-box-sizing      : border-box;
+  -ms-box-sizing     : border-box;
+  box-sizing         : border-box;
+}
+
+h1,h2,h3,h4,h5,h6,p { margin-bottom : 6pt; }
+ol,ul,dl { list-style-position : inside; }
+/* リセット完了 */
+
+/* 標準セレクタ開始 */
+body {
+  font   : 10pt 'Trebuchet MS', Verdana, Helvetica, Arial, Meiryo, sans-serif;
+  color  : #444;
+  background: #fff;
+}
+
+a { text-decoration : none; }
+a:link, a:visited { color : inherit; }
+a:hover { text-decoration: underline; }
+
+strong {
+  font-weight    : 800;
+  color          : #000;
+}
+/* 標準セレクタ終了 */
+
+/*
+ * aburatsuboat
+ */
+
+.aburatsubo-container {
+  position           : absolute;
+  left               : 1em;
+  width              : 800px;
+  min-width          : 800px;
+  height             : 500px;
+  border             : thin solid #888;
+  background         : #fff;
+  overflow           : hidden;
+}
+
+.slider_axis {
+  font               : 10px sans-serif;
+  user-select        : none;
+  -webkit-user-select: none;
+  -moz-user-select   : none;
+}
+
+.slider_axis .domain {
+  fill               : none;
+  stroke             : #000;
+  stroke-width       : 12px;
+  stroke-opacity     : .3;
+  stroke-linecap     : round;
+  stroke-linejoin    : round;
+}
+
+.slider_axis .halo {
+  fill               : none;
+  stroke             : #ddd;
+  stroke-width       : 10px;
+  stroke-linecap     : round;
+  stroke-linejoin    : round;
+}
+
+.slider .handle {
+  fill               : #fff;
+  stroke             : #000;
+  stroke-opacity     : .5;
+  stroke-width       : 1.25px;
+  cursor             : crosshair;
+}
+
+#play-button {
+  position           : absolute;
+  top                : 15px;
+  left               : 15px;
+  background         : Navy;
+  padding-right      : 26px;
+  border-radius      : 2px;
+  border             : none;
+  color              : white;
+  margin             : 0;
+  padding            : 0 12px;
+  width              : 68px;
+  cursor             : pointer;
+  height             : 26px;
+  font-family        : 'Trebuchet MS', Verdana, Helvetica, Arial, Meiryo, sans-serif;
+  font-size          : 12px;
+}
+
+#play-button:hover {
+  background-color   : #064d84;
+}
+
+#play-button:active {
+  background-color   : #002657;
+}
+
+/* 見えないがマウスイベントは処理する */
+.overlay {
+  fill               : none;
+  pointer-events     : all;
+  overflow           : hidden;
+}
+
+.landmark {
+  fill               : #ccc;
+  stroke             : #333;
+  stroke-width       : 1.0px;
+}
+
+.landname {
+  font-family        : 'Trebuchet MS', Verdana, Helvetica, Arial, Meiryo, sans-serif;
+  font-size          : 10px;
+  color              : #444;
+}
+
+.compass text {
+  text-anchor        : middle;
+  fill               : #999;
+  font-family        : 'Trebuchet MS', Verdana, Helvetica, Arial, Meiryo, sans-serif;
+  font-size          : 10px;
+}
+
+.compass circle{
+  fill               : white;
+  fill-opacity       : 0.5;
+  stroke             : grey;
+  stroke-opacity     : 0.2;
+}
+
+.compass line {
+  stroke             : grey;
+}
+
+.tide_axis path,
+.tide_axis line {
+  fill               : none;
+  stroke             : #000;
+  shape-rendering    : crispEdges;
+}
+
+.tide_axis text {
+   font-family       : sans-serif;
+   font-size         : 10px;
+}
+
+.tide_area {
+  fill               : steelblue;
+  opacity            : 0.5;
+}
+
+.tide_line {
+  fill               : none;
+  stroke             : steelblue;
+  stroke-width       : 1.5px;
+}
+
+.tide_grid .tick {
+  stroke             : grey;
+  stroke-width       : 0.5px;
+}
+
+.tide_timeline {
+  fill               : none;
+  stroke             : gray;
+  stroke-width       : 1.0px;
+}
+
+.tide_circle {
+  fill               : blue;
+  stroke             : white;
+  stroke-width       : 1.0px;
+}
