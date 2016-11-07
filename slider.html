@@ -21,7 +21,11 @@
 <body>
   <svg width="960" height="500"></svg>
   <script>
-    d3.select('svg').call(aburatsuboat.slider());
+    var slider = aburatsuboat.slider();
+    slider.on('hue', function(d) {
+      console.log(d);
+    });
+    d3.select('svg').call(slider);
   </script>
 
 </body>

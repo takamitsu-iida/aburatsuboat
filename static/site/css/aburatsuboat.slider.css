@@ -2,28 +2,31 @@
   font: 12px sans-serif;
 }
 
-.slider-track,
+.slider-track-outline,
 .slider-track-inset,
-.slider-track-overlay {
+.slider-track-background {
   stroke-linecap: round;
 }
 
-.slider-track {
+.slider-track-outline {
   stroke: #000;
   stroke-opacity: 0.3;
   stroke-width: 10px;
+  pointer-events: none; /* do not handle mouse event */
 }
 
 .slider-track-inset {
   stroke: #ddd;
   stroke-width: 8px;
+  pointer-events: none; /* do not handle mouse event */
 }
 
-.slider-track-overlay {
+.slider-track-background {
   stroke: none;
   pointer-events: stroke;
   stroke-width: 50px;
   cursor: crosshair;
+  pointer-events: all; /* handle all mouse event */
 }
 
 .slider-handle {
@@ -31,4 +34,29 @@
   stroke: #000;
   stroke-opacity: 0.5;
   stroke-width: 1.25px;
+  pointer-events: none; /* do not handle mouse event */
+}
+
+.ssbutton {
+  fill: #eee;
+  stroke: #1f628d;
+  stroke-width: 2px;
+}
+
+.ssbutton:hover {
+  fill:#bbb;
+}
+
+.ssbutton.mousedown {
+  fill:#bbb;
+}
+
+.ssbuttonText {
+  font-size: 14px;
+  fill: #000;
+  pointer-events: none; /* do not handle mouse event */
+  text-anchor: middle;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
 }
