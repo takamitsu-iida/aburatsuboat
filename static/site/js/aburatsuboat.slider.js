@@ -62,8 +62,8 @@
     var minValue = 0;
     var maxValue = 1;
 
-    // どのくらいの時間をかけて移動するか(10秒)
-    var duration = 10000;
+    // どのくらいの時間をかけて移動するか(15秒)
+    var duration = 15000;
 
     // スケール関数
     var xScale = d3.scaleLinear()
@@ -235,14 +235,14 @@
         .classed(CLASS_SLIDER_HANDLE, true)
         .merge(handleAll)
         .attr('r', 9)
-        .attr('cx', xScale(minValue));
+        .attr('cx', xScale(hueActual));
 
       //
     }
 
     // 頻繁に'hue'イベントを発火させると重たいのでdebounce処理を加える
     var debounceTimer;
-    var debounceInterval = 30;
+    var debounceInterval = 25;
     function callEvent(eventname, context, data) {
       // 最後に呼ばれた時の値を使うために、この関数のインスタンスに保存しておく
       this.eventname = eventname;
@@ -276,9 +276,8 @@
       }
 
       // 現在位置から計算して、残り時間がどのくらいかを計算してトランジションを作成する
-      hueTarget = maxValue;
       var t = d3.transition()
-        .duration((hueTarget - hueActual) / (maxValue - minValue) * duration)
+        .duration((maxValue - hueActual) / (maxValue - minValue) * duration)
         .ease(d3.easeLinear);
 
       // トランジションをかけて移動する
@@ -345,6 +344,11 @@
         return debounceInterval;
       }
       debounceInterval = _;
+      return this;
+    };
+
+    exports.pause = function() {
+      pause();
       return this;
     };
 

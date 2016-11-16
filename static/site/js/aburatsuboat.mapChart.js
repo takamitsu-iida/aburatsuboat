@@ -35,22 +35,10 @@
     var w = width - margin.left - margin.right;
     var h = height - margin.top - margin.bottom;
 
-    // 各レイヤへのセレクタ
-    var mapLayer;
-    var boatLayer;
-
     // 地図の縮尺
     // 小さいほど広域が表示される
     // 画面サイズと合わせて調整が必要で、経験則的に決める必要がある
     var scaleSize = 1500000;
-
-    // 地図のtopojsonデータ、および
-    // 取り出したfeatures
-    var geodataMiura = aburatsuboat.geodata.miura;
-    var featuresMiura = topojson.feature(geodataMiura, geodataMiura.objects.miura).features;
-
-    // ランドマークのfeatures
-    var featuresLandmark = aburatsuboat.geodata.landmark.features;
 
     // 地図の中心点
     var center = [139.61, 35.162];
@@ -72,12 +60,17 @@
     var coordtext; // 座標を表示するテキスト
     var marker; // 移動軌跡の先頭の●
 
-    // call()時に渡されるボートの軌跡データのfeatures
-    var featuresBoat;
+    // tideChartモジュールのインスタンス
+    var tideChart = aburatsuboat.tideChart();
 
-    // call()時に渡される潮汐データ
-    var tideDatas;
-    var timeDomain;
+    // スライダモジュールのインスタンス
+    // 'hue'イベントの捕捉は最後に実行
+    var slider = aburatsuboat.slider();
+
+    // call()時に渡されるデータ
+    var featuresBoat; // ボートの軌跡データのfeatures
+    var tideDatas; // 潮汐データ
+    var timeDomain; // 時刻の入力ドメイン
 
     //
     // call()されたときに呼ばれる公開関数
@@ -112,10 +105,17 @@
 
         initMapLayer();
         initCompass();
-        initBoatLayer(featuresBoat);
-        initSlider();
+        initBoatLayer();
         initTideChart();
+        initSlider();
 
+        // スライダの 'hue' イベントを捕捉する
+        slider.on('hue', function(d) {
+          setMarkerPosition(d);
+          tideChart.setTimeline(d);
+        });
+
+        slider.pause();
         //
       });
     }
@@ -148,7 +148,7 @@
 
       // 地図を描画するレイヤ 'g'
       var mapLayerAll = svg.selectAll('.ab-map-layer').data(['dummy']);
-      mapLayer = mapLayerAll
+      var mapLayer = mapLayerAll
         .enter()
         .append('g')
         .classed('ab-map-layer', true)
@@ -164,9 +164,15 @@
         .append('text')
         .classed('ab-map-coordtext', true)
         .merge(coordtextAll)
-        .attr('x', 15)
-        .attr('y', 70)
+        .attr('x', 20)
+        .attr('y', 80)
         .text('');
+
+      // 地図のtopojsonデータをグローバル空間から取り出す
+      var geodataMiura = aburatsuboat.geodata.miura;
+
+      // 取り出したfeatures
+      var featuresMiura = topojson.feature(geodataMiura, geodataMiura.objects.miura).features;
 
       // mapLayerに地図のパスを追加
       var miuraAll = mapLayer.selectAll('.ab-map-miura').data(featuresMiura);
@@ -184,6 +190,9 @@
         .style('filter', 'url(#drop-shadow)');
 
       miuraAll.exit().remove(); // 存在しないはず
+
+      // ランドマークのfeaturesはグローバル空間から取り出す
+      var featuresLandmark = aburatsuboat.geodata.landmark.features;
 
       // mapLayerにランドマークを描画
       var landmarkAll = mapLayer.selectAll('.ab-map-landmark').data(featuresLandmark);
@@ -226,10 +235,10 @@
     var interpolateString; // d3.interpolateString('0,' + l, l + ',' + l);
 
     // ボートの航路を表示するレイヤを作成する
-    function initBoatLayer(featuresBoat) {
+    function initBoatLayer() {
       // ボートの航路を描画するレイヤ 'g'
       var boatLayerAll = svg.selectAll('.ab-boat-layer').data(['dummy']);
-      boatLayer = boatLayerAll
+      var boatLayer = boatLayerAll
         .enter()
         .append('g')
         .classed('ab-boat-layer', true)
@@ -282,7 +291,8 @@
         .attr('r', 5)
         .attr('fill', 'purple');
 
-      //
+      // マーカーの位置を初期化する
+      setMarkerPosition(0);
     }
 
     // 0～1の間の値を引数にしてマーカーの位置をセットする
@@ -340,13 +350,10 @@
       return result;
     }
 
-    // スライダモジュールをインスタンス化する
-    var slider = aburatsuboat.slider();
-
     // スライダを作る
     function initSlider() {
       // レイヤにスライダモジュールを配置する領域'g'を作成する
-      var sliderLayerAll = mapLayer.selectAll('.ab-slider-layer').data(['dummy']);
+      var sliderLayerAll = svg.selectAll('.ab-slider-layer').data(['dummy']);
       var sliderLayer = sliderLayerAll
         // ENTER領域
         .enter()
@@ -358,9 +365,6 @@
       sliderLayer.call(slider);
       //
     }
-
-    // tideChartをインスタンス化する
-    var tideChart = aburatsuboat.tideChart();
 
     // 潮汐チャートを作る
     function initTideChart() {
@@ -385,17 +389,11 @@
         .append('g')
         .classed('ab-tidechart-layer', true)
         .merge(tideChartLayerAll)
-        .attr('transform', 'translate(40,' + (h - chartHeight - 20) + ')');
+        .attr('transform', 'translate(35,' + (h - chartHeight - 15) + ')');
 
       // コンテナのセレクションにデータを紐付けてcall()する
       tideChartLayer.datum(data).call(tideChart);
     }
-
-    // スライダの 'hue' イベントを捕捉する
-    slider.on('hue', function(d) {
-      setMarkerPosition(d);
-      tideChart.setTimeline(d);
-    });
 
     // コンパスの描画
     function initCompass() {
@@ -472,6 +470,7 @@
         return center;
       }
       center = _;
+      projection.center(center);
       return this;
     };
 
@@ -480,6 +479,7 @@
         return scaleSize;
       }
       scaleSize = _;
+      projection.scale(scaleSize);
       return this;
     };
 

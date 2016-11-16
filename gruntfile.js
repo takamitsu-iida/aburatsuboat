@@ -9,6 +9,8 @@ module.exports = function (grunt) {
       target_js: {
         // 元ファイルの指定
         src: [
+          'static/d3.4.3.0/d3.js',
+          'static/topojson.1.6.27/topojson.js',
           'static/site/js/aburatsuboat.startup.js',
           'static/site/js/aburatsuboat.slider.js',
           'static/site/js/aburatsuboat.geodata.miura.js',
