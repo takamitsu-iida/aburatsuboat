@@ -1,27 +1,27 @@
-.slider-ticks {
+.sl-slider-ticks {
   font: 12px sans-serif;
 }
 
-.slider-track-outline,
-.slider-track-inset,
-.slider-track-background {
+.sl-slider-track-outline,
+.sl-slider-track-inset,
+.sl-slider-track-background {
   stroke-linecap: round;
 }
 
-.slider-track-outline {
+.sl-slider-track-outline {
   stroke: #000;
   stroke-opacity: 0.3;
   stroke-width: 10px;
   pointer-events: none; /* do not handle mouse event */
 }
 
-.slider-track-inset {
+.sl-slider-track-inset {
   stroke: #ddd;
   stroke-width: 8px;
   pointer-events: none; /* do not handle mouse event */
 }
 
-.slider-track-background {
+.sl-slider-track-background {
   stroke: none;
   pointer-events: stroke;
   stroke-width: 50px;
@@ -29,7 +29,7 @@
   pointer-events: all; /* handle all mouse event */
 }
 
-.slider-handle {
+.sl-slider-handle {
   fill: #fff;
   stroke: #000;
   stroke-opacity: 0.5;
@@ -37,21 +37,21 @@
   pointer-events: none; /* do not handle mouse event */
 }
 
-.ssbutton {
+.sl-ssbutton {
   fill: #eee;
   stroke: #1f628d;
   stroke-width: 2px;
 }
 
-.ssbutton:hover {
+.sl-ssbutton:hover {
   fill:#bbb;
 }
 
-.ssbutton.mousedown {
+.sl-ssbutton.mousedown {
   fill:#bbb;
 }
 
-.ssbuttonText {
+.sl-ssbutton-text {
   font-size: 14px;
   fill: #000;
   pointer-events: none; /* do not handle mouse event */

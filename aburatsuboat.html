@@ -16,15 +16,19 @@
   <script src="./static/topojson.1.6.27/topojson.min.js"></script>
 
   <!-- スタイルシート -->
-  <link rel="stylesheet" href="./static/site/css/aburatsuboat.css" type="text/css">
+  <link rel="stylesheet" href="./static/site/css/aburatsuboat.mapChart.css" type="text/css">
+  <link rel="stylesheet" href="./static/site/css/aburatsuboat.slider.css" type="text/css">
 
   <!-- aburatsuboatをインクルード -->
   <script src="./static/site/js/aburatsuboat.startup.js"></script>
+  <script src="./static/site/js/aburatsuboat.slider.js"></script>
   <script src="./static/site/js/aburatsuboat.geodata.miura.js"></script>
   <script src="./static/site/js/aburatsuboat.geodata.landmark.js"></script>
-  <script src="./static/site/js/aburatsuboat.geodata.boat.js"></script>
-  <script src="./static/site/js/aburatsuboat.tidedata.js"></script>
   <script src="./static/site/js/aburatsuboat.mapChart.js"></script>
+  <script src="./static/site/js/aburatsuboat.tideChart.js"></script>
+  <!-- データ -->
+  <script src="./static/site/js/aburatsuboat.boatdata.js"></script>
+  <script src="./static/site/js/aburatsuboat.tidedata.js"></script>
 </head>
 
 <body>
@@ -43,7 +47,7 @@
   </div>
 
   <script>
-    aburatsuboat.mapChart.example();
+    aburatsuboat.main();
   </script>
 
 </body>

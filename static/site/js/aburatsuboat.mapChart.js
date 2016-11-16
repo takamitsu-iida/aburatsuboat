@@ -4,50 +4,48 @@
  * aburatsubo.mapChart.js
  * takamitsu.iida@gmail.com
  *
- * 2015.03.15 初版
- * 2015.04.16 d3.slider.jsの利用をやめて組み込みに変更
- * 2015.04.27 潮汐グラフを追加
- * 2016.10.31 d3 v4用に書き換え
+ * 2016.11.19 d3.js v4用に書き換え
  */
 
 // NY Timesのやり方ではデータ配列を都度slice()して一部だけを取り出して描画している。
 // slice()する場所をスライダーで変化させることで動いているように見せるのだが、
-// データ配列全体の長さの入手と、尻尾の長さをどのくらいにするかの調整が難しい。
-// dataLength = boatdata[0].geometry.coordinates.length;で取れるのかも？
+// ここで扱うデータは配列ではなく、topojsonで変換したpathなので、
 // ここでは簡単なやり方として、破線の書き方を工夫することで動いているように見せかける。
 
 (function() {
   aburatsuboat.mapChart = function module() {
-    // カスタムイベントを登録する
-    var dispatch = d3.dispatch('brushing');
-
     // 一番上位のsvgを選択するセレクタ
-    var svg = d3.select(null);
+    var svg;
 
     // SVGの枠の大きさ
     var width = 800;
     var height = 500;
 
-    // 'g'の描画領域となるデフォルトのマージン
+    // 地図を描画するレイヤ'g'のマージン
+    // 軸とか描くわけではないので、SVG領域いっぱいまで広げておく
     var margin = {
-      top: 5,
-      right: 5,
-      bottom: 5,
-      left: 5
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0
     };
 
     // 描画領域のサイズw, h
-    // マージンの分だけ小さくしておく。
+    // マージンの分だけ小さく
     var w = width - margin.left - margin.right;
     var h = height - margin.top - margin.bottom;
+
+    // 各レイヤへのセレクタ
+    var mapLayer;
+    var boatLayer;
 
     // 地図の縮尺
     // 小さいほど広域が表示される
     // 画面サイズと合わせて調整が必要で、経験則的に決める必要がある
     var scaleSize = 1500000;
 
-    // 地図のtopojson
-    // 地図のtopojsonデータから取り出したfeatures
+    // 地図のtopojsonデータ、および
+    // 取り出したfeatures
     var geodataMiura = aburatsuboat.geodata.miura;
     var featuresMiura = topojson.feature(geodataMiura, geodataMiura.objects.miura).features;
 
@@ -74,20 +72,225 @@
     var coordtext; // 座標を表示するテキスト
     var marker; // 移動軌跡の先頭の●
 
+    // call()時に渡されるボートの軌跡データのfeatures
+    var featuresBoat;
+
+    // call()時に渡される潮汐データ
+    var tideDatas;
+    var timeDomain;
+
+    //
+    // call()されたときに呼ばれる公開関数
+    //
+    function exports(_selection) {
+      _selection.each(function(_data) {
+        // nullをバインドしてcall()されたら、描画済みのsvgを全て削除する
+        if (!_data) {
+          d3.select(this).select('svg').remove();
+          return;
+        }
+
+        // パッキングされたデータをバラす
+        // aburatsuboat.startup.jsを参照
+        tideDatas = _data.tideDatas;
+        timeDomain = _data.timeDomain;
+        featuresBoat = _data.featuresBoat;
+
+        // SVGを一つ作成する
+        var svgAll = _selection.selectAll('svg').data(['dummy']);
+        svg = svgAll
+          .enter()
+          .append('svg')
+          .attr('preserveAspectRatio', 'xMinYMin meet')
+          .attr('viewBox', '0 0 ' + width + ' ' + height)
+          .style('overflow', 'hidden')
+          .style('background', '#90D1FF') // 背景を海の色にする
+          .classed('svg-content-responsive', true)
+          .merge(svgAll)
+          .attr('width', width)
+          .attr('height', height);
+
+        initMapLayer();
+        initCompass();
+        initBoatLayer(featuresBoat);
+        initSlider();
+        initTideChart();
+
+        //
+      });
+    }
+
+    function initMapLayer() {
+      // drop-shadowフィルタを作成しておく
+      var filter = svg.append('defs')
+        .append('filter')
+        .attr('id', 'drop-shadow')
+        .attr('height', '110%');
+
+      filter.append('feGaussianBlur')
+        .attr('in', 'SourceAlpha')
+        .attr('stdDeviation', 1)
+        .attr('result', 'blur');
+
+      filter.append('feOffset')
+        .attr('in', 'blur')
+        .attr('dx', 1)
+        .attr('dy', 1)
+        .attr('result', 'offsetBlur');
+
+      var feMerge = filter.append('feMerge');
+
+      feMerge.append('feMergeNode')
+        .attr('in', 'offsetBlur');
+
+      feMerge.append('feMergeNode')
+        .attr('in', 'SourceGraphic');
+
+      // 地図を描画するレイヤ 'g'
+      var mapLayerAll = svg.selectAll('.ab-map-layer').data(['dummy']);
+      mapLayer = mapLayerAll
+        .enter()
+        .append('g')
+        .classed('ab-map-layer', true)
+        .merge(mapLayerAll)
+        .attr('width', w)
+        .attr('height', h)
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+      // mapLayerに緯度経度を表示するテキスト領域を追加
+      var coordtextAll = mapLayer.selectAll('.ab-map-coordtext').data(['dummy']);
+      coordtext = coordtextAll
+        .enter()
+        .append('text')
+        .classed('ab-map-coordtext', true)
+        .merge(coordtextAll)
+        .attr('x', 15)
+        .attr('y', 70)
+        .text('');
+
+      // mapLayerに地図のパスを追加
+      var miuraAll = mapLayer.selectAll('.ab-map-miura').data(featuresMiura);
+      miuraAll
+        .enter()
+        .append('path')
+        .attr('class', function(d) {
+          return 'ab-map-miura ' + d.properties.name;
+        })
+        .merge(miuraAll)
+        .attr('d', geoPath)
+        .attr('fill', '#E9E5DC') // or #F0EDE5
+        .attr('stroke', 'gray')
+        .attr('stroke-width', 0.5)
+        .style('filter', 'url(#drop-shadow)');
+
+      miuraAll.exit().remove(); // 存在しないはず
+
+      // mapLayerにランドマークを描画
+      var landmarkAll = mapLayer.selectAll('.ab-map-landmark').data(featuresLandmark);
+      landmarkAll
+        .enter()
+        .append('path')
+        .classed('ab-map-landmark', true)
+        .merge(landmarkAll)
+        .attr('d', geoPath.pointRadius(function(d) {
+          if (d.properties) {
+            return d.properties.r;
+          }
+          return 4;
+        }));
+
+      landmarkAll.exit().remove(); // 存在しないはず
+
+      var landnameAll = mapLayer.selectAll('.ab-map-landname').data(featuresLandmark);
+      landnameAll
+        .enter()
+        .append('text')
+        .classed('ab-map-landname', true)
+        .merge(landnameAll)
+        .attr('dx', '.75em')
+        .attr('dy', '.35em')
+        .attr('transform', function(d) {
+          return 'translate(' + geoPath.centroid(d) + ')';
+        })
+        .text(function(d) {
+          return d.properties.name;
+        });
+      //
+    }
+
+    // ボートの軌跡の全長をキャッシュする
+    var boatTotalLength; // boat2.node().getTotalLength();
+
+    // 補完関数
+    // ボートの航路の全長が決まらないと作れないので、これもcall()されたときに作成
+    var interpolateString; // d3.interpolateString('0,' + l, l + ',' + l);
+
+    // ボートの航路を表示するレイヤを作成する
+    function initBoatLayer(featuresBoat) {
+      // ボートの航路を描画するレイヤ 'g'
+      var boatLayerAll = svg.selectAll('.ab-boat-layer').data(['dummy']);
+      boatLayer = boatLayerAll
+        .enter()
+        .append('g')
+        .classed('ab-boat-layer', true)
+        .merge(boatLayerAll)
+        .attr('width', w)
+        .attr('height', h)
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+      // ボートの軌跡を描画する
+      // 常時表示
+      var boatAll = boatLayer.selectAll('.ab-boat-path').data(featuresBoat);
+      boatAll
+        .enter()
+        .append('path')
+        .classed('ab-boat-path', true)
+        .merge(boatAll)
+        .attr('d', boatPath)
+        .attr('fill', 'none')
+        .attr('stroke', 'gray')
+        .attr('stroke-width', 0.4);
+
+      // 同じボートの軌跡を重ねて描画し、破線を工夫して動いているように見せかける
+      var boat2All = boatLayer.selectAll('.ab-boat-path2').data(featuresBoat);
+      boat2 = boat2All
+        .enter()
+        .append('path')
+        .classed('ab-boat-path2', true)
+        .merge(boat2All)
+        .attr('d', boatPath)
+        .attr('fill', 'none')
+        .attr('stroke', 'purple')
+        .attr('stroke-width', 1.2)
+        .attr('stroke-dashoffset', 0)
+        .attr('stroke-dasharray', function() {
+          // 書く長さ(=0), 書かない長さ(=全長)、の順
+          return '0,' + this.getTotalLength();
+        });
+
+      // トランジション中に毎回計算するのは重いので、インスタンス変数に保持しておく
+      var l = boatTotalLength = boat2.node().getTotalLength();
+      interpolateString = d3.interpolateString('0,' + l, l + ',' + l);
+
+      // マーカーの●を作る
+      var markerAll = boatLayer.selectAll('.ab-boat-marker').data(['dummy']);
+      marker = markerAll
+        .enter()
+        .append('circle')
+        .classed('ab-boat-marker', true)
+        .merge(markerAll)
+        .attr('r', 5)
+        .attr('fill', 'purple');
+
+      //
+    }
+
     // 0～1の間の値を引数にしてマーカーの位置をセットする
     function setMarkerPosition(t) {
       boat2.attr('stroke-dasharray', function() {
         return getStrokeDashArray(t);
       });
     }
-
-    // ボートの航路の全長
-    // call()されたときに渡されるデータで計算する
-    var boatTotalLength; // boat2.node().getTotalLength();
-
-    // 補完関数
-    // ボートの航路の全長が決まらないと作れないので、これもcall()されたときに作成
-    var interpolateString; // d3.interpolateString('0,' + l, l + ',' + l);
 
     // 引数tは0～1の間の数字を受け取り、
     // tの数字に応じて破線を描画する
@@ -133,434 +336,115 @@
       c[1] = d3.format('.10g')(c[1]);
       coordtext.text(c);
 
-      // 出発点から描画するなら単純にi(t)を戻せばよいが、ここでは破線のデータを返す
+      // 出発点から描画するなら単純にi(t)を戻せばよいが、尻尾の都合上、作成した破線を返す
       return result;
     }
 
-    // スライダを起動するボタンへのセレクタ
-    var playButton;
-
-    // このモジュールをcall()したコンテナ
-    var container;
-
-    // コンテナに紐付いているデータ
-    // ボートの軌跡データが紐付いていると想定
-    var featuresBoat;
-
-    //
-    // call()されたときに呼ばれる公開関数
-    //
-    function exports(_selection) {
-      _selection.each(function(_data) {
-        // nullをバインドしてcall()されたら、描画済みのsvgを全て削除する
-        if (!_data) {
-          d3.select(this).select('svg').remove();
-          return;
-        }
-
-        // 変数名を分かりやすいものに戻す
-        container = _selection;
-        featuresBoat = _data;
-
-        // 都市選択用のHTMLを追加する
-        initPlayButton();
-
-        // ダミーデータを紐付けることで重複作成を防止する
-        var svgAll = container.selectAll('svg').data(['dummy']);
-
-        // ENTER領域にsvgを作成
-        svgAll.enter()
-          .append('svg')
-          .attr('preserveAspectRatio', 'xMinYMin meet')
-          .attr('viewBox', '0 0 ' + width + ' ' + height)
-          .style('overflow', 'hidden')
-          .style('background', '#90D1FF') // 背景を海の色にする
-          .classed('svg-content-responsive', true)
-          .merge(svgAll)
-          .attr('width', width)
-          .attr('height', height);
-
-        // 最上位のsvgを選択するセレクタ
-        svg = container.select('svg');
-
-        initMapLayer();
-        initBoatLayer(featuresBoat);
-        initSliderLayer();
-
-        //
-      });
-    }
-
-    function initPlayButton() {
-      container.selectAll('.graphic').data(['dummy'])
-        .enter()
-        .append('div')
-        .classed('graphic', true)
-        .append('button')
-        .text('開始')
-        .attr('id', 'play-button');
-
-      playButton = container.select('#play-button');
-    }
-
-    function initMapLayer() {
-      // drop-shadowフィルタを作成しておく
-      var filter = svg.append('defs')
-        .append('filter')
-        .attr('id', 'drop-shadow')
-        .attr('height', '110%');
-
-      filter.append('feGaussianBlur')
-        .attr('in', 'SourceAlpha')
-        .attr('stdDeviation', 1)
-        .attr('result', 'blur');
-
-      filter.append('feOffset')
-        .attr('in', 'blur')
-        .attr('dx', 1)
-        .attr('dy', 1)
-        .attr('result', 'offsetBlur');
-
-      var feMerge = filter.append('feMerge');
-
-      feMerge.append('feMergeNode')
-        .attr('in', 'offsetBlur');
-
-      feMerge.append('feMergeNode')
-        .attr('in', 'SourceGraphic');
-
-      // 地図を描画するレイヤ 'g'
-      // CSSファイルも見ること
-      // 地図を描画するレイヤ 'g'
-      var mapLayerAll = svg.selectAll('.mapLayer').data(['dummy']);
-      mapLayerAll
-        .enter()
-        .append('g')
-        .classed('mapLayer', true)
-        .merge(mapLayerAll)
-        .attr('width', w)
-        .attr('height', h)
-        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-
-      // mapLayerに緯度経度を表示するテキスト領域を追加
-      var coordtextAll = svg.select('.mapLayer').selectAll('.coordtext').data(['dummy']);
-      coordtextAll
-        .enter()
-        .append('text')
-        .classed('coordtext', true)
-        .merge(coordtextAll)
-        .attr('x', 15)
-        .attr('y', 70)
-        .text('');
-
-      // mapLayerに地図のパスを追加
-      var miuraAll = svg.select('.mapLayer').selectAll('.miura').data(featuresMiura);
-      miuraAll
-        .enter()
-        .append('path')
-        .attr('d', geoPath)
-        .attr('class', function(d) {
-          return 'miura ' + d.properties.name;
-        })
-        .attr('fill', '#E9E5DC') // or #F0EDE5
-        .attr('stroke', 'gray')
-        .attr('stroke-width', 0.5)
-        .style('filter', 'url(#drop-shadow)');
-
-      miuraAll
-        .attr('d', geoPath);
-
-      miuraAll
-        .exit()
-        .remove();
-
-      // mapLayerにランドマークを描画
-      var landmarkAll = svg.select('.mapLayer').selectAll('.landmark').data(featuresLandmark);
-      landmarkAll
-        .enter()
-        .append('path')
-        .classed('landmark', true)
-        .attr('fill', 'black') // CSSの読み込みに失敗すると黒くなるのでわかる
-        .merge(landmarkAll)
-        .attr('d', geoPath.pointRadius(function(d) {
-          if (d.properties) {
-            return d.properties.r;
-          }
-          return 4;
-        }));
-
-      landmarkAll
-        .exit()
-        .remove();
-
-      var landnameAll = svg.select('.mapLayer').selectAll('.landname').data(featuresLandmark);
-      landnameAll
-        .enter()
-        .append('text')
-        .classed('landname', true)
-        .attr('dx', '.35em')
-        .attr('dy', '.35em')
-        .merge(landnameAll)
-        .attr('transform', function(d) {
-          return 'translate(' + geoPath.centroid(d) + ')';
-        })
-        .text(function(d) {
-          return d.properties.name;
-        });
-      //
-    }
-
-    // ボートの航路を表示するレイヤを作成する
-    function initBoatLayer(featuresBoat) {
-      // ボートの航路を描画するレイヤ 'g'
-      var boatLayerAll = svg.selectAll('.boatLayer').data(['dummy']);
-      boatLayerAll
-        .enter()
-        .append('g')
-        .classed('boatLayer', true)
-        .merge(boatLayerAll)
-        .attr('width', w)
-        .attr('height', h)
-        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-
-      // ボートの軌跡を描画する
-      // 常時表示
-      svg.select('.boatLayer').selectAll('.boat').data(featuresBoat)
-        .enter()
-        .append('path')
-        .attr('d', boatPath)
-        .attr('fill', 'none')
-        .attr('stroke', 'gray')
-        .attr('stroke-width', 0.4)
-        .classed('boat', true);
-
-      // 同じボートの軌跡を重ねて描画し、破線を工夫して動いているように見せかける
-      boat2 = svg.select('.boatLayer').selectAll('.boat2').data(featuresBoat)
-        .enter()
-        .append('path')
-        .attr('d', boatPath)
-        .attr('fill', 'none')
-        .attr('stroke', 'purple')
-        .attr('stroke-width', 1.2)
-        .attr('stroke-dashoffset', 0)
-        .attr('stroke-dasharray', function() {
-          // 書く長さ(=0), 書かない長さ(=全長)、の順
-          return '0,' + this.getTotalLength();
-        })
-        .classed('boat2', true);
-
-      // トランジション中に毎回計算するのは重いので、インスタンス変数に保持しておく
-      var l = boat2.node().getTotalLength();
-      boatTotalLength = l;
-      interpolateString = d3.interpolateString('0,' + l, l + ',' + l);
-
-      // マーカーの●を作る
-      var markerAll = svg.select('.boatLayer').selectAll('.marker').data(['dummy']);
-      markerAll
-        .enter()
-        .append('circle')
-        .attr('r', 5)
-        .attr('fill', 'purple')
-        .classed('marker', true);
-
-      marker = svg.select('.boatLayer').select('.marker');
-      //
-    }
+    // スライダモジュールをインスタンス化する
+    var slider = aburatsuboat.slider();
 
     // スライダを作る
-    function initSliderLayer() {
-      // ブラシの左右マージン
-      var brushMargin = {left: 100, right: 250};
+    function initSlider() {
+      // レイヤにスライダモジュールを配置する領域'g'を作成する
+      var sliderLayerAll = mapLayer.selectAll('.ab-slider-layer').data(['dummy']);
+      var sliderLayer = sliderLayerAll
+        // ENTER領域
+        .enter()
+        .append('g')
+        .classed('ab-slider-layer', true)
+        // ENTER + UPDATE領域
+        .merge(sliderLayerAll);
 
-      // ブラシ領域の高さ。正確に●をクリックしなくても大丈夫。
-      var brushHeight = 60;
+      sliderLayer.call(slider);
+      //
+    }
 
-      // ブラシの幅
-      var brushWidth = w;
+    // tideChartをインスタンス化する
+    var tideChart = aburatsuboat.tideChart();
 
+    // 潮汐チャートを作る
+    function initTideChart() {
+      // チャートのデフォルトの高さを調べる
+      var chartHeight = tideChart.height();
 
-      // 0～1の数字で扱うように正規化する
-      var minValue = 0;
-      var maxValue = 1;
-      var currentValue = 1;
-      var targetValue = 1;
+      // 潮汐データの最小値と最大値はこんなものかな
+      tideChart.ydomain([-10, 150]);
 
-      // スライダーをクリックした時にスムーズに動くようにする
-      var alpha = 0.25;
-      var moving;
-      var move;
+      // Y軸のticksを調整する
+      tideChart.yticks(5);
 
-      // 最初から最後まで移動するのに要する時間(20秒)
-      var duration = 20000;
-
-      // スケール関数
-      var xScale = d3.scaleLinear()
-        .domain([minValue, maxValue])
-        .range([100, brushWidth - 250]) // 左に100px、右に250pxの隙間を作る
-        .clamp(true); // この値の中に強制的に収める
-
-      var xTicks = {
-        0: 'start',
-        1: 'end'
+      // データをパッキングする
+      var data = {
+        tideDatas: tideDatas,
+        timeDomain: timeDomain
       };
 
-      // ハンドルの●を表すd3オブジェクト
-      var handle;
-
-      // ブラシ
-      var brush = d3.brushX()
-        .extent([[100, 0], [brushWidth - 250, brushHeight]])
-        .on('brush', function() {
-           // マウス操作によるイベントの場合、パラメータ調整だけ実行
-          if (d3.event.sourceEvent) {
-            if (d3.event.sourceEvent.target.parentNode === this) { // クリックイベントの場合
-              playButton.text('開始');
-              // ジャンプ移動するのではなく、なめらかに移動する
-              targetValue = xScale.invert(d3.mouse(this)[0]);
-              move();
-            }
-          } else {
-            // プログラムによるイベントはここで処理する
-            currentValue = brush.extent()[0];
-            handle.attr('cx', xScale(currentValue)); // ハンドルの●をxScaleに合わせて移動
-
-            // ●を移動する
-            setMarkerPosition(currentValue);
-
-            // 潮汐グラフの縦線と●を移動する
-            /*
-            if (aburatsuboat.tidedata.datas && tideMap.path) {
-              setTideLine(currentValue);
-            }
-            */
-          }
-        });
-
-      // スライダを描画するレイヤ 'g'
-      var sliderLayerAll = svg.selectAll('.sliderLayer').data(['dummy']);
-      sliderLayerAll
+      var tideChartLayerAll = svg.selectAll('.ab-tidechart-layer').data(['dummy']);
+      var tideChartLayer = tideChartLayerAll
         .enter()
         .append('g')
-        .classed('sliderLayer', true)
-        .merge(sliderLayerAll)
-        .attr('width', w)
-        .attr('height', h)
-        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+        .classed('ab-tidechart-layer', true)
+        .merge(tideChartLayerAll)
+        .attr('transform', 'translate(40,' + (h - chartHeight - 20) + ')');
 
-      // X軸を作成
-      var xaxis = d3.axisBottom(xScale)
-        // 両端のtick線なし、内側のtick線なし
-        .tickSize(0, 0)
-        // 文字を下に12ズラす
-        .tickPadding(12)
-        // tick数は1、つまり最初をのぞいて最後の1個だけなので、startとendの文字だけになる
-        .ticks(1)
-        .tickFormat(function(t) {
-          return xTicks[t] || '';
-        });
+      // コンテナのセレクションにデータを紐付けてcall()する
+      tideChartLayer.datum(data).call(tideChart);
+    }
 
-      // 軸の描画領域'g'を作って、call(xaxis)する
-      // 軸はpathで描画されていて、v3の時はきれいに角が取れていたのに、v4は角がちょっと残る
-      //   ┌──────────────────┐
-      var sliderAxisAll = svg.select('.sliderLayer').selectAll('.slider_axis').data(['dummy']);
-      sliderAxisAll
+    // スライダの 'hue' イベントを捕捉する
+    slider.on('hue', function(d) {
+      setMarkerPosition(d);
+      tideChart.setTimeline(d);
+    });
+
+    // コンパスの描画
+    function initCompass() {
+      // 機能的な意味はないので、SVGのパスを載せた方がいいかも
+      var compassLayerAll = svg.selectAll('.ab-compass-layer').data(['dummy']);
+      var compassLayer = compassLayerAll
         .enter()
         .append('g')
-        .attr('class', 'slider_axis')
-        .merge(sliderAxisAll)
-        .attr('transform', 'translate(0,' + brushHeight / 2 + ')')
-        .call(xaxis)
-        .select('.domain') // domainとhaloはスライダーの横軸の見た目の調整
-        .select(function() {
-          // domainクラスを持つラインを複写して、新たにharoクラスを名付ける
-          // domain側を太く、haloを細くすることで、フチドリされた線にする
-          return this.parentNode.appendChild(this.cloneNode(true));
-        })
-        .attr('class', 'halo');
+        .classed('ab-compass-layer', true)
+        .merge(compassLayerAll)
+        .attr('transform', 'translate(750,30)');
 
-      // スライダーのグループ"g"を作成し、call(brush)する
-      var sliderAll = svg.select('.sliderLayer').selectAll('.slider').data(['dummy']);
-      sliderAll
-        .enter()
-        .append('g')
-        .classed('slider', true)
-        .call(brush);
-
-      var slider = svg.select('.slider');
-
-      slider
-        .selectAll('.selection,.handle')
-        .remove();
-
-      // ●の描画
-      var handleAll = svg.select('.slider').selectAll('.handle').data(['dummy']);
-      handle = handleAll
+      var circleAll = compassLayer.selectAll('circle').data(['dummy']);
+      circleAll
         .enter()
         .append('circle')
-        .classed('handle', true)
-        .attr('transform', 'translate(100,' + brushHeight / 2 + ')')
-        .attr('r', 8);
+        .attr('r', 12);
 
-      var paused = function() {
-        if (slider.node().__transition__) {
-          // トランジション中なら、それを止める
-          slider.interrupt();
-          this.textContent = '開始';
-        } else {
-          if (currentValue === maxValue) {
-            // 一番右まで行っているなら最初から
-            slider
-              .call(brush.extent([currentValue = minValue, currentValue]))
-              .call(brush.event);
-          }
-          targetValue = maxValue;
-          slider.transition()
-            .duration((targetValue - currentValue) / (targetValue - minValue) * duration)
-            .ease('linear')
-            .call(brush.extent([targetValue, targetValue]))
-            .call(brush.event)
-            .each('end', function() {
-              playButton.text('開始');
-            });
-
-          this.textContent = '停止';
-        }
-      };
-
-      // 起動と同時にpausedが呼ばれる
-      /*
-      playButton
-        .on('click', paused)
-        .each(paused);
-      */
-
-      // クリックで移動する場合に、イベントを発行しながら移動する
-      move = function() {
-        var copyValue = currentValue;
-        if (moving) {
-          return false;
-        }
-        moving = true;
-
-        console.log(copyValue);
-
-        d3.timer(function() { // trueを返すまでこのタイマーは回る
-          if (copyValue !== currentValue) {
-            moving = false;
-            return true; // 終了
-          }
-
-          copyValue = currentValue = Math.abs(currentValue - targetValue) < 1e-3 ? targetValue : targetValue * alpha + currentValue * (1 - alpha);
-
-          slider
-            .call(brush.extent([currentValue, currentValue]));
-
-          moving = currentValue !== targetValue;
-
-          return !moving;
+      var textAll = compassLayer.selectAll('text').data(['N']);
+      textAll
+        .enter()
+        .append('text')
+        .attr('dy', -16)
+        .text(function(d) {
+          return d;
         });
-      };
-      //
+
+      var lineG = compassLayer.selectAll('.ab-compass-line-g').data(['dummy']).enter().append('g').classed('ab-compass-line-g', true);
+      lineG
+        .append('line')
+        .attr('x1', 0)
+        .attr('y1', 10)
+        .attr('x2', 0)
+        .attr('y2', -10);
+      lineG
+        .append('line')
+        .attr('x1', 0)
+        .attr('y1', -10)
+        .attr('x2', -4)
+        .attr('y2', -6);
+      lineG
+        .append('line')
+        .attr('x1', 0)
+        .attr('y1', -10)
+        .attr('x2', 4)
+        .attr('y2', -6);
+
+      // iを0～1、値を角度で返すようなデータがあれば、動的に回転させることができる
+      // compass.attr('transform', function(d) { return 'rotate(' + (180 + d[i]) + ')'; });
     }
 
     exports.width = function(_) {
@@ -599,36 +483,7 @@
       return this;
     };
 
-    // カスタムイベントを'on'で発火できるようにリバインドする
-    // v3までのやり方
-    // d3.rebind(exports, dispatch, 'on');
-    // v4のやり方
-    exports.on = function() {
-      var value = dispatch.on.apply(dispatch, arguments);
-      return value === dispatch ? exports : value;
-    };
-
     return exports;
-  };
-
-  // 使い方  <div id='aburatsuboat'></div>内に地図を描画する
-  aburatsuboat.mapChart.example = function() {
-    var container = d3.select('#aburatsuboat');
-
-    // ボートの軌跡データ
-    // 取り出したいデータ名はobjects.aburatsubo_20150110のようにファイルごとに変わってしまう
-    // 最初の値であることが分かっているので、先頭のキーを取り出して、それに対応する値を取り出す
-    var key = Object.keys(aburatsuboat.geodata.boat.objects)[0];
-    var geodataBoat = aburatsuboat.geodata.boat;
-    var featuresBoat = topojson.feature(geodataBoat, geodataBoat.objects[key]).features;
-
-    // mapChartをインスタンス化する
-    var chart = aburatsuboat.mapChart().width(800).height(500);
-
-    // コンテナにボートデータを紐付けてcall()する
-    container.datum(featuresBoat).call(chart);
-
-   //
   };
   //
 })();

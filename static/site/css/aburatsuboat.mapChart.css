@@ -47,137 +47,81 @@ strong {
   overflow           : hidden;
 }
 
-.slider_axis {
-  font               : 10px sans-serif;
-  user-select        : none;
-  -webkit-user-select: none;
-  -moz-user-select   : none;
-}
-
-.slider_axis .domain {
-  fill               : none;
-  stroke             : #000;
-  stroke-width       : 12px;
-  stroke-opacity     : .3;
-  stroke-linecap     : round;
-  stroke-linejoin    : round;
-}
-
-.slider_axis .halo {
-  fill               : none;
-  stroke             : #ddd;
-  stroke-width       : 10px;
-  stroke-linecap     : round;
-  stroke-linejoin    : round;
-}
-
-.slider .handle {
-  fill               : #fff;
-  stroke             : #000;
-  stroke-opacity     : .5;
-  stroke-width       : 1.25px;
-  cursor             : crosshair;
-}
-
-#play-button {
-  position           : absolute;
-  top                : 15px;
-  left               : 15px;
-  background         : Navy;
-  padding-right      : 26px;
-  border-radius      : 2px;
-  border             : none;
-  color              : white;
-  margin             : 0;
-  padding            : 0 12px;
-  width              : 68px;
-  cursor             : pointer;
-  height             : 26px;
-  font-family        : 'Trebuchet MS', Verdana, Helvetica, Arial, Meiryo, sans-serif;
-  font-size          : 12px;
-}
-
-#play-button:hover {
-  background-color   : #064d84;
-}
-
-#play-button:active {
-  background-color   : #002657;
-}
-
-/* 見えないがマウスイベントは処理する */
-.overlay {
-  fill               : none;
-  pointer-events     : all;
-  overflow           : hidden;
-}
-
-.landmark {
+.ab-map-landmark {
   fill               : #ccc;
   stroke             : #333;
   stroke-width       : 1.0px;
 }
 
-.landname {
+.ab-map-landname {
   font-family        : 'Trebuchet MS', Verdana, Helvetica, Arial, Meiryo, sans-serif;
   font-size          : 10px;
   color              : #444;
 }
 
-.compass text {
+.ab-compass-layer text {
   text-anchor        : middle;
   fill               : #999;
   font-family        : 'Trebuchet MS', Verdana, Helvetica, Arial, Meiryo, sans-serif;
   font-size          : 10px;
 }
 
-.compass circle{
+.ab-compass-layer circle{
   fill               : white;
   fill-opacity       : 0.5;
   stroke             : grey;
   stroke-opacity     : 0.2;
 }
 
-.compass line {
+.ab-compass-layer line {
   stroke             : grey;
 }
 
-.tide_axis path,
-.tide_axis line {
-  fill               : none;
-  stroke             : #000;
-  shape-rendering    : crispEdges;
+/* aburatsuboat.tideChart.js */
+
+.ab-tidechart-area {
+  fill: steelblue;
+  opacity: 0.5;
 }
 
-.tide_axis text {
-   font-family       : sans-serif;
-   font-size         : 10px;
+.ab-tidechart-line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
 }
 
-.tide_area {
-  fill               : steelblue;
-  opacity            : 0.5;
+.ab-tidechart-timeline {
+  fill: none;
+  stroke: gray;
+  stroke-width: 1.0px;
+  shape-rendering: crispEdges;
 }
 
-.tide_line {
-  fill               : none;
-  stroke             : steelblue;
-  stroke-width       : 1.5px;
+.ab-tidechart-tcircle {
+  fill: blue;
+  stroke: white;
+  stroke-width: 1.0px;
 }
 
-.tide_grid .tick {
-  stroke             : grey;
-  stroke-width       : 0.5px;
+.x-axis-text,
+.y-axis-text {
+  font-family       : sans-serif;
+  font-size         : 10px;
+  text-anchor       : end;
 }
 
-.tide_timeline {
-  fill               : none;
-  stroke             : gray;
-  stroke-width       : 1.0px;
+.grid line,
+.x-grid line,
+.y-grid line {
+  stroke: grey;
+  stroke-opacity: 0.5;
+  shape-rendering: crispEdges;
 }
 
-.tide_circle {
-  fill               : blue;
-  stroke             : white;
-  stroke-width       : 1.0px;
+.grid path,
+.x-grid path,
+.y-grid path {
+  stroke: grey;
+  stroke-opacity: 0.5;
+  shape-rendering: crispEdges;
 }

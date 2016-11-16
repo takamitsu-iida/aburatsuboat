@@ -1,19 +1,38 @@
 /* global d3, aburatsuboat */
 
-// Smooth Slider
-// by Mike Bostock
-// https://bl.ocks.org/mbostock/6499018
+// 2016.11.09
+// Takamitsu IIDA
 
-// 上記を参考にして作成したスライダモジュール
-// スタイル指定をしているのでCSSファイル必須
+// d3iida.slider.jsから、名前空間を変更して利用
+
 (function() {
   //
-  this.aburatsuboat = this.aburatsuboat || {};
-
   aburatsuboat.slider = function module(_accessor) {
-    // 外側の枠の大きさ
-    var width = 600;
-    var height = 100;
+    //
+    // クラス名定義
+    // CSSファイルも見ること
+    //
+
+    // ボタンを配置するコンテナ
+    var CLASS_BUTTON_CONTAINER = 'sl-button-container';
+
+    // スライダを配置するコンテナ
+    var CLASS_SLIDER_CONTAINER = 'sl-slider-container';
+
+    // マウスイベントを仕込む背景
+    var CLASS_TRACK_BACKGROUND = 'sl-slider-track-background';
+
+    // 境界
+    var CLASS_TRACK_OUTLINE = 'sl-slider-track-outline';
+
+    // 内側の塗りつぶし
+    var CLASS_TRACK_INSET = 'sl-slider-track-inset';
+
+    // startとendの表示
+    var CLASS_SLIDER_TICKS = 'sl-slider-ticks';
+
+    // 丸
+    var CLASS_SLIDER_HANDLE = 'sl-slider-handle';
 
     // ボタン設置場所へのマージン
     var buttonMargin = {
@@ -21,15 +40,22 @@
       left: 50
     };
 
+    // ボタンモジュールをインスタンス化する
+    var ssbutton = aburatsuboat.ssbutton();
+
+    // ボタンがクリックされたときのハンドラ
+    ssbutton.on('click', function() {
+      pause();
+    });
+
     // スライダ設置場所へのマージン
     var sliderMargin = {
       top: 35,
-      left: 110,
-      right: 50
+      left: 110
     };
 
-    // スライダの幅は、外側の枠の大きさから、左と右のマージンを差し引いた分になる
-    var sliderWidth = width - sliderMargin.left - sliderMargin.right;
+    // スライダの幅
+    var sliderWidth = 400;
 
     // 最小値、最大値
     // 0～1の数字で扱うように正規化したほうが楽
@@ -46,22 +72,27 @@
       .clamp(true);
 
     // スライダの'g'を選択するセレクタ
-    var slider = d3.select(null);
+    var slider;
 
-    // ハンドル
-    var handle = d3.select(null);
+    // ハンドルの'circle'を選択するセレクタ
+    var handle;
 
     // カスタムイベント 'hue'
     var dispatch = d3.dispatch('hue');
 
+    // スライダの現在位置
     var hueActual = minValue;
+
+    // スライダの目標値
     var hueTarget = minValue;
+
+    // スムーズに移動させるパラメータとタイマー
     var hueAlpha = 0.2;
     var hueTimer = d3.timer(hueTween);
 
-    // tに滑らかにスライドする
-    function hue(t) {
-      hueTarget = t;
+    // targetに滑らかにスライドする
+    function hue(target) {
+      hueTarget = target;
       hueTimer.restart(hueTween);
     }
 
@@ -74,8 +105,11 @@
         hueActual += hueError * hueAlpha;
       }
       handle.attr('cx', xScale(hueActual));
-      dispatch.call('hue', this, hueActual);
+
+      // イベントで変更を通知
       // console.log(hueActual);
+      // dispatch.call('hue', this, hueActual);
+      callEvent('hue', this, hueActual);
     }
 
     var xTicks = {
@@ -88,17 +122,13 @@
       .on('start.interrupt', function() {
         // 動いているスライダは停止する
         slider.interrupt();
+
+        // ボタンの表示を変える
+        ssbutton.text('開始');
       })
       .on('start drag', function() {
         hue(xScale.invert(d3.event.x));
       });
-
-    var ssbutton = aburatsuboat.ssbutton();
-
-    ssbutton.on('click', function() {
-      console.log('button clicked');
-      paused();
-    });
 
     // このモジュールをcall()したセレクション
     var container;
@@ -108,76 +138,77 @@
       container = _selection;
 
       // ボタンを配置するコンテナ 'g' を作ってcall()する
-      var ssbuttonContainerAll = container.selectAll('.ssbuttonContainer').data(['dummy']);
+      var ssbuttonContainerAll = container.selectAll('.' + CLASS_BUTTON_CONTAINER).data(['dummy']);
       ssbuttonContainerAll
         .enter()
         .append('g')
-        .classed('ssbuttonContainer', true)
+        .classed(CLASS_BUTTON_CONTAINER, true)
         // ENTER + UPDATE領域
         .merge(ssbuttonContainerAll)
         .attr('transform', 'translate(' + buttonMargin.left + ',' + buttonMargin.top + ')')
         .call(ssbutton);
 
       // スライダを配置するコンテナ 'g' を作って'sliderContainer'クラスを付与する
-      var sliderContainerAll = container.selectAll('.sliderContainer').data(['dummy']);
+      var sliderContainerAll = container.selectAll('.' + CLASS_SLIDER_CONTAINER).data(['dummy']);
       slider = sliderContainerAll
         // ENTER領域
         .enter()
         .append('g')
-        .classed('sliderContainer', true)
+        .classed(CLASS_SLIDER_CONTAINER, true)
         .merge(sliderContainerAll)
         // ENTER + UPDATE領域
         .attr('transform', 'translate(' + sliderMargin.left + ',' + sliderMargin.top + ')');
 
-      // 下に置くものから順に積み上げていく
+      // スライダのコンテナに対して、下に置くものから順に積み上げていく
 
       // 一番下は太さ50pxの極太ライン(rectでもいいけど、ラインの方が指定するポイントが少なくてすむ)
       // ドラッグイベントを処理する
-      var sliderTrackBackgroundAll = slider.selectAll('.slider-track-background').data(['dummy']);
+      var sliderTrackBackgroundAll = slider.selectAll('.' + CLASS_TRACK_BACKGROUND).data(['dummy']);
       sliderTrackBackgroundAll
         .enter()
         .append('line')
-        .classed('slider-track-background', true)
+        .classed(CLASS_TRACK_BACKGROUND, true)
         .merge(sliderTrackBackgroundAll)
         .attr('x1', xScale.range()[0])
         .attr('x2', xScale.range()[1])
+
         // ドラッグイベント
         .call(drag);
 
       // 次に置くのは輪郭になる太さ10pxのライン
-      var sliderTrackOutlineAll = slider.selectAll('.slider-track-outline').data(['dummy']);
+      var sliderTrackOutlineAll = slider.selectAll('.' + CLASS_TRACK_OUTLINE).data(['dummy']);
       sliderTrackOutlineAll
         .enter()
         .append('line')
-        .classed('slider-track-outline', true)
+        .classed(CLASS_TRACK_OUTLINE, true)
         .merge(sliderTrackOutlineAll)
         .attr('x1', xScale.range()[0])
         .attr('x2', xScale.range()[1]);
 
       // 次に置くのは内側を塗りつぶす太さ8pxのライン
-      var sliderTrackInsetAll = slider.selectAll('.slider-track-inset').data(['dummy']);
+      var sliderTrackInsetAll = slider.selectAll('.' + CLASS_TRACK_INSET).data(['dummy']);
       sliderTrackInsetAll
         .enter()
         .append('line')
-        .classed('slider-track-inset', true)
+        .classed(CLASS_TRACK_INSET, true)
         .merge(sliderTrackInsetAll)
         .attr('x1', xScale.range()[0])
         .attr('x2', xScale.range()[1]);
 
       // 目盛を表示する領域'g'を追加
       // スライダよりも18pxだけ下に下げる
-      var ticksAll = slider.selectAll('.slider-ticks').data(['dummy']);
+      var ticksAll = slider.selectAll('.' + CLASS_SLIDER_TICKS).data(['dummy']);
       ticksAll
         // ENTER領域
         .enter()
         .append('g')
-        .classed('slider-ticks', true)
+        .classed(CLASS_SLIDER_TICKS, true)
         // ENTER + UPDATE領域
         .merge(ticksAll)
         .attr('transform', 'translate(0,' + 18 + ')');
 
       // 目盛になるテキスト
-      var ticksTextAll = container.select('.slider-ticks').selectAll('text').data(xScale.ticks(1));
+      var ticksTextAll = container.select('.' + CLASS_SLIDER_TICKS).selectAll('text').data(xScale.ticks(1));
       ticksTextAll
         // ENTER領域
         .enter()
@@ -187,6 +218,7 @@
         .attr('x', xScale)
         .attr('text-anchor', 'middle')
         .text(function(d) {
+          // xTicks[0]は'start'、xTicks[1]は'end'
           return xTicks[d] || '';
         });
 
@@ -196,78 +228,89 @@
         .remove();
 
       // ハンドルを追加する
-      var handleAll = slider.selectAll('.slider-handle').data(['dummy']);
+      var handleAll = slider.selectAll('.' + CLASS_SLIDER_HANDLE).data(['dummy']);
       handle = handleAll
         .enter()
         .append('circle')
-        .classed('slider-handle', true)
+        .classed(CLASS_SLIDER_HANDLE, true)
+        .merge(handleAll)
         .attr('r', 9)
-        .attr('cx', xScale(minValue))
-        .merge(handleAll);
+        .attr('cx', xScale(minValue));
 
       //
     }
 
-    function paused() {
-      // スライダーに仕込んでいるトランジションが動いているなら、それを止める
+    // 頻繁に'hue'イベントを発火させると重たいのでdebounce処理を加える
+    var debounceTimer;
+    var debounceInterval = 30;
+    function callEvent(eventname, context, data) {
+      // 最後に呼ばれた時の値を使うために、この関数のインスタンスに保存しておく
+      this.eventname = eventname;
+      this.context = context;
+      this.data = data;
+      debounceTimer = debounceTimer || window.setTimeout(function() {
+        debounceTimer = null;
+        // イベントを発行する
+        dispatch.call(this.eventname, this.context, this.data);
+      }, debounceInterval);
+    }
+
+    function pause() {
+      // スライダーに仕込んでいるトランジションが動いているなら、それを停止して、処理完了
       if (slider.node().__transition) {
-        console.log('動いているので停止します');
+        // スライダのトランジションを停止
         slider.interrupt();
-        // ボタンの表示を変える
-        // this.textContent = "開始";
-      } else {
-        // スライダーが停止しているなら、その場所から再開する
-        if (hueActual === maxValue) {
-          // 一番右まで行っているなら最初に巻き戻す
-          console.log('先頭に戻します');
-          hueActual = minValue;
-          handle.attr('cx', xScale(minValue));
-        }
 
-        // 残り時間がどのくらいかを計算する
-        hueTarget = maxValue;
-        var t = d3.transition().duration((hueTarget - hueActual) / (hueTarget - minValue) * duration).ease(d3.easeLinear);
-
-        // トランジションをかけて移動する
-        slider
-          .transition(t)
-          .tween('hue', function() {
-            var i = d3.interpolate(hueActual, maxValue);
-            return function(d) {
-              hueActual = i(d);
-              if (hueActual === maxValue) {
-                console.log('最大値に到達しました');
-              }
-              handle.attr('cx', xScale(hueActual));
-              dispatch.call('hue', this, hueActual);
-            };
-          });
-
-        //
+        // ボタンの表示を'開始'に戻す
+        ssbutton.text('開始');
+        return;
       }
 
-      // this.textContent = '停止';
+      // ボタンの表示を'停止'にする
+      ssbutton.text('停止');
+
+      // 一番右まで行っているなら最初に巻き戻す
+      if (hueActual === maxValue) {
+        hueActual = minValue;
+        handle.attr('cx', xScale(minValue));
+      }
+
+      // 現在位置から計算して、残り時間がどのくらいかを計算してトランジションを作成する
+      hueTarget = maxValue;
+      var t = d3.transition()
+        .duration((hueTarget - hueActual) / (maxValue - minValue) * duration)
+        .ease(d3.easeLinear);
+
+      // トランジションをかけて移動する
+      slider
+        .transition(t)
+        .tween('hue', function() {
+          var i = d3.interpolate(hueActual, maxValue);
+          return function(d) {
+            hueActual = i(d);
+            if (hueActual === maxValue) {
+              // console.log('最大値に到達しました');
+              ssbutton.text('開始');
+            }
+            handle.attr('cx', xScale(hueActual));
+            // dispatch.call('hue', this, hueActual);
+            callEvent('hue', this, hueActual);
+          };
+        });
+
+      //
     }
 
     //
     // クロージャ
     //
 
-    exports.width = function(_) {
+    exports.sliderWidth = function(_) {
       if (!arguments.length) {
-        return width;
+        return sliderWidth;
       }
-      width = _;
-      sliderWidth = width - sliderMargin.left - sliderMargin.right;
+      sliderWidth = _;
       xScale.range([0, sliderWidth]);
-      return this;
-    };
-
-    exports.height = function(_) {
-      if (!arguments.length) {
-        return height;
-      }
-      height = _;
       return this;
     };
 
@@ -276,6 +319,7 @@
         return minValue;
       }
       minValue = _;
+      xScale.domain([minValue, maxValue]);
       return this;
     };
 
@@ -284,6 +328,23 @@
         return maxValue;
       }
       maxValue = _;
+      xScale.domain([minValue, maxValue]);
+      return this;
+    };
+
+    exports.duration = function(_) {
+      if (!arguments.length) {
+        return duration;
+      }
+      duration = _;
+      return this;
+    };
+
+    exports.debounceInterval = function(_) {
+      if (!arguments.length) {
+        return debounceInterval;
+      }
+      debounceInterval = _;
       return this;
     };
 
@@ -301,10 +362,13 @@
 
   // svgの簡易ボタンモジュール
   aburatsuboat.ssbutton = function module(_accessor) {
+    var CLASS_BUTTON_RECT = 'sl-ssbutton';
+    var CLASS_BUTTON_TEXT = 'sl-ssbutton-text';
+
     // 表示テキスト
     var text = '開始';
 
-    // 文字と'rect'までの距離
+    // テキストと外枠の'rect'までのスペース
     var padding = 10;
 
     // rectの角を曲げるときの半径
@@ -321,11 +385,11 @@
       container = _selection;
 
       // コンテナにテキストをのせる
-      var ssbuttonTextAll = container.selectAll('.ssbuttonText').data(['dummy']);
+      var ssbuttonTextAll = container.selectAll('.' + CLASS_BUTTON_TEXT).data(['dummy']);
       var ssbuttonText = ssbuttonTextAll
         .enter()
         .append('text')
-        .classed('ssbuttonText', true)
+        .classed(CLASS_BUTTON_TEXT, true)
         .merge(ssbuttonTextAll)
         .text(text);
 
@@ -333,11 +397,11 @@
       var bbox = ssbuttonText.node().getBBox();
 
       // ボタンとなる'rectをテキストの前に挿入する
-      var ssbuttonAll = container.selectAll('.ssbutton').data(['dummy']);
+      var ssbuttonAll = container.selectAll('.' + CLASS_BUTTON_RECT).data(['dummy']);
       ssbuttonAll
         .enter()
-        .insert('rect', '.ssbuttonText')
-        .classed('ssbutton', true)
+        .insert('rect', '.' + CLASS_BUTTON_TEXT)
+        .classed(CLASS_BUTTON_RECT, true)
         .on('click', function(d) {
           dispatch.call('click', this, d);
         })
@@ -357,6 +421,9 @@
         return text;
       }
       text = _;
+      if (container) {
+        container.select('.' + CLASS_BUTTON_TEXT).text(text);
+      }
       return this;
     };
 
