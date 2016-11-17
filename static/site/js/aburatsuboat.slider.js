@@ -241,18 +241,27 @@
     }
 
     // 頻繁に'hue'イベントを発火させると重たいのでdebounce処理を加える
+    var debounce = false;
     var debounceTimer;
     var debounceInterval = 25;
+    var debounce_eventname;
+    var debounce_context;
+    var debounce_data;
     function callEvent(eventname, context, data) {
-      // 最後に呼ばれた時の値を使うために、この関数のインスタンスに保存しておく
-      this.eventname = eventname;
-      this.context = context;
-      this.data = data;
-      debounceTimer = debounceTimer || window.setTimeout(function() {
-        debounceTimer = null;
+      if (debounce) {
+        // 最後に呼ばれた時の値を使うために保存しておく
+        debounce_eventname = eventname;
+        debounce_context = context;
+        debounce_data = data;
+        debounceTimer = debounceTimer || window.setTimeout(function() {
+          debounceTimer = null;
+          // イベントを発行する
+          dispatch.call(debounce_eventname, debounce_context, debounce_data);
+        }, debounceInterval);
+      } else {
         // イベントを発行する
-        dispatch.call(this.eventname, this.context, this.data);
-      }, debounceInterval);
+        dispatch.call(eventname, context, data);
+      }
     }
 
     function pause() {
