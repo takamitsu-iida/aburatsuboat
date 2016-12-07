@@ -35,6 +35,9 @@
     var w = width - margin.left - margin.right;
     var h = height - margin.top - margin.bottom;
 
+    // ダミーデータ
+    var dummy = [0];
+
     // 地図の縮尺
     // 小さいほど広域が表示される
     // 画面サイズと合わせて調整が必要で、経験則的に決める必要がある
@@ -90,7 +93,7 @@
         featuresBoat = _data.featuresBoat;
 
         // SVGを一つ作成する
-        var svgAll = _selection.selectAll('svg').data(['dummy']);
+        var svgAll = _selection.selectAll('svg').data(dummy);
         svg = svgAll
           .enter()
           .append('svg')
@@ -147,7 +150,7 @@
         .attr('in', 'SourceGraphic');
 
       // 地図を描画するレイヤ 'g'
-      var mapLayerAll = svg.selectAll('.ab-map-layer').data(['dummy']);
+      var mapLayerAll = svg.selectAll('.ab-map-layer').data(dummy);
       var mapLayer = mapLayerAll
         .enter()
         .append('g')
@@ -158,7 +161,7 @@
         .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
       // mapLayerに緯度経度を表示するテキスト領域を追加
-      var coordtextAll = mapLayer.selectAll('.ab-map-coordtext').data(['dummy']);
+      var coordtextAll = mapLayer.selectAll('.ab-map-coordtext').data(dummy);
       coordtext = coordtextAll
         .enter()
         .append('text')
@@ -237,7 +240,7 @@
     // ボートの航路を表示するレイヤを作成する
     function initBoatLayer() {
       // ボートの航路を描画するレイヤ 'g'
-      var boatLayerAll = svg.selectAll('.ab-boat-layer').data(['dummy']);
+      var boatLayerAll = svg.selectAll('.ab-boat-layer').data(dummy);
       var boatLayer = boatLayerAll
         .enter()
         .append('g')
@@ -282,7 +285,7 @@
       interpolateString = d3.interpolateString('0,' + l, l + ',' + l);
 
       // マーカーの●を作る
-      var markerAll = boatLayer.selectAll('.ab-boat-marker').data(['dummy']);
+      var markerAll = boatLayer.selectAll('.ab-boat-marker').data(dummy);
       marker = markerAll
         .enter()
         .append('circle')
@@ -353,7 +356,7 @@
     // スライダを作る
     function initSlider() {
       // レイヤにスライダモジュールを配置する領域'g'を作成する
-      var sliderLayerAll = svg.selectAll('.ab-slider-layer').data(['dummy']);
+      var sliderLayerAll = svg.selectAll('.ab-slider-layer').data(dummy);
       var sliderLayer = sliderLayerAll
         // ENTER領域
         .enter()
@@ -383,7 +386,7 @@
         timeDomain: timeDomain
       };
 
-      var tideChartLayerAll = svg.selectAll('.ab-tidechart-layer').data(['dummy']);
+      var tideChartLayerAll = svg.selectAll('.ab-tidechart-layer').data(dummy);
       var tideChartLayer = tideChartLayerAll
         .enter()
         .append('g')
@@ -395,10 +398,9 @@
       tideChartLayer.datum(data).call(tideChart);
     }
 
-    // コンパスの描画
+    // コンパスの描画(機能的な意味はない)
     function initCompass() {
-      // 機能的な意味はないので、SVGのパスを載せた方がいいかも
-      var compassLayerAll = svg.selectAll('.ab-compass-layer').data(['dummy']);
+      var compassLayerAll = svg.selectAll('.ab-compass-layer').data(dummy);
       var compassLayer = compassLayerAll
         .enter()
         .append('g')
@@ -406,22 +408,29 @@
         .merge(compassLayerAll)
         .attr('transform', 'translate(750,30)');
 
-      var circleAll = compassLayer.selectAll('circle').data(['dummy']);
+      var circleAll = compassLayer.selectAll('circle').data(dummy);
       circleAll
         .enter()
         .append('circle')
+        .merge(circleAll)
+        .attr('cx', 0)
+        .attr('cy', 0)
         .attr('r', 12);
 
       var textAll = compassLayer.selectAll('text').data(['N']);
       textAll
         .enter()
         .append('text')
+        .merge(textAll)
         .attr('dy', -16)
         .text(function(d) {
           return d;
         });
 
-      var lineG = compassLayer.selectAll('.ab-compass-line-g').data(['dummy']).enter().append('g').classed('ab-compass-line-g', true);
+      // lineを使って描画する方法
+      // この部分、一度描画したら更新はしない(enter領域のみ)
+      /*
+      var lineG = compassLayer.selectAll('.ab-compass-line-g').data(dummy).enter().append('g').classed('ab-compass-line-g', true);
       lineG
         .append('line')
         .attr('x1', 0)
@@ -440,6 +449,25 @@
         .attr('y1', -10)
         .attr('x2', 4)
         .attr('y2', -6);
+      */
+
+      var northAll = compassLayer.selectAll('.ab-compass-path-north').data(dummy);
+      northAll
+        .enter()
+        .append('path')
+        .classed('ab-compass-path-north', true)
+        .merge(northAll)
+        .attr('d', 'M4 0L0,-10 -4,0Z')
+        .attr('fill', '#808080'); // 塗りつぶす
+
+      var southAll = compassLayer.selectAll('.ab-compass-path-south').data(dummy);
+      southAll
+        .enter()
+        .append('path')
+        .classed('ab-compass-path-south', true)
+        .merge(southAll)
+        .attr('d', 'M4 0L0,10 -4,0')
+        .attr('fill', 'none'); // 塗りつぶさない
 
       // iを0～1、値を角度で返すようなデータがあれば、動的に回転させることができる
       // compass.attr('transform', function(d) { return 'rotate(' + (180 + d[i]) + ')'; });

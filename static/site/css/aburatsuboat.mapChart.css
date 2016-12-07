@@ -61,7 +61,7 @@ strong {
 
 .ab-compass-layer text {
   text-anchor        : middle;
-  fill               : #999;
+  fill               : #808080;
   font-family        : 'Trebuchet MS', Verdana, Helvetica, Arial, Meiryo, sans-serif;
   font-size          : 10px;
 }
@@ -69,12 +69,13 @@ strong {
 .ab-compass-layer circle{
   fill               : white;
   fill-opacity       : 0.5;
-  stroke             : grey;
+  stroke             : #808080;
   stroke-opacity     : 0.2;
 }
 
+.ab-compass-layer path,
 .ab-compass-layer line {
-  stroke             : grey;
+  stroke             : #808080;
 }
 
 /* aburatsuboat.tideChart.js */
