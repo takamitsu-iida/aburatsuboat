@@ -6,4 +6,4 @@
 
 ライブデモ
 
-[aburatsuboat](https://sites.google.com/site/aburatsuboat/home)
+[aburatsuboat](https://takamitsu-iida.github.io/aburatsuboat/aburatsuboat.html)
